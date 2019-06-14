@@ -24,5 +24,5 @@ export interface UserPost {
 export interface UserPostEvent {
   pathParameters: { [name: string]: string } | null;
   queryStringParameters: { [name: string]: string } | null;
-  body: UserPost | null;
+  body: UserPost;
 }
