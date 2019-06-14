@@ -1,8 +1,11 @@
 
 export class DB {
+
+  public static inMemory = () => new DB();
+
   private posts: UserPost[];
 
-  public constructor() {
+  private constructor() {
     this.posts = [];
   }
 

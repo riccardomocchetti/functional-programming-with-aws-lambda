@@ -4,7 +4,7 @@ import { DB } from './model';
 import { validateCreatePostEvent, validateListPostsEvent } from './validation';
 import { HttpResponse, StatusCodes } from './http';
 
-const db = new DB();
+const db = DB.inMemory();
 
 const createPost = (event: APIGatewayEvent, database: DB = db) =>
   validateCreatePostEvent(event)
