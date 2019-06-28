@@ -1,30 +1,35 @@
 import { APIGatewayEvent } from 'aws-lambda';
 import { exampleCreateEvent, exampleListEvent, exampleBadRequest } from './request-examples';
-import { DB } from './model';
+import { DB, createPostIO, listPostsIO } from './dao';
 import { validateCreatePostEvent, validateListPostsEvent } from './validation';
-import { HttpResponse, StatusCodes } from './http';
+import { HttpResponse, StatusCodes, ApplicationError } from './http';
+import { taskEither } from 'fp-ts/lib/TaskEither'
 
 const db = DB.inMemory();
 
 const createPost = (event: APIGatewayEvent, database: DB = db) =>
-  validateCreatePostEvent(event)
-    .map((createPostEvent) => database.createPost(createPostEvent.body))
+  taskEither.of<ApplicationError, APIGatewayEvent>(event)
+    .chain(validateCreatePostEvent)
+    .chain(createPostIO(database))
     .fold(
       (error) => HttpResponse.fromError(error.statusCode, error),
       (result) => HttpResponse.fromResult(StatusCodes.CREATED, result)
     );
 
 const listPosts = (event: APIGatewayEvent, database: DB = db) =>
-  validateListPostsEvent(event)
-    .map(() => database.listPosts())
+  taskEither.of<ApplicationError, APIGatewayEvent>(event)
+    .chain(validateListPostsEvent)
+    .chain(listPostsIO(database))
     .fold(
       (error) => HttpResponse.fromError(error.statusCode, error),
       (result) => HttpResponse.fromResult(StatusCodes.OK, result)
     );
 
 console.log('> Creating a post...');
-console.log(createPost(exampleCreateEvent));
+createPost(exampleCreateEvent).map(console.log).run()
+
 console.log('> Retrieving the list of posts...');
-console.log(listPosts(exampleListEvent));
+listPosts(exampleListEvent).map(console.log).run()
+
 console.log('> Trying to send an invalid request...');
-console.log(createPost(exampleBadRequest));
+createPost(exampleBadRequest).map(console.log).run()
