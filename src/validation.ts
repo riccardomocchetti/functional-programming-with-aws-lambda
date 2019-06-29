@@ -20,7 +20,7 @@ const bodyNotNull = (event: APIGatewayEvent) => {
   return right<ApplicationError, APIGatewayEvent>(event);
 };
 
-const parseCreateEventBody = (event: APIGatewayEvent) => {
+const asUserPostEvent = (event: APIGatewayEvent) => {
   try {
     const parsedBody = event.body
       ? JSON.parse(event.body)
@@ -40,7 +40,7 @@ const parseCreateEventBody = (event: APIGatewayEvent) => {
   }
 };
 
-const queryParamsNotNull = (event: APIGatewayEvent) => {
+const queryParamsIsNull = (event: APIGatewayEvent) => {
   if (event.queryStringParameters !== null) {
     return left<ApplicationError, APIGatewayEvent>(
       new ApplicationError(
@@ -53,7 +53,7 @@ const queryParamsNotNull = (event: APIGatewayEvent) => {
   return right<ApplicationError, APIGatewayEvent>(event);
 };
 
-const pathParamsNotNull = (event: APIGatewayEvent) => {
+const pathParamsIsNull = (event: APIGatewayEvent) => {
   if (event.pathParameters !== null) {
     return left<ApplicationError, APIGatewayEvent>(
       new ApplicationError(
@@ -68,11 +68,12 @@ const pathParamsNotNull = (event: APIGatewayEvent) => {
 
 export const validateCreatePostEvent = (event: APIGatewayEvent) =>
   either.of<ApplicationError, APIGatewayEvent>(event)
-    .chain(validateListPostsEvent)
+    .chain(pathParamsIsNull)
+    .chain(queryParamsIsNull)
     .chain(bodyNotNull)
-    .chain(parseCreateEventBody);
+    .chain(asUserPostEvent);
 
 export const validateListPostsEvent = (event: APIGatewayEvent) =>
   either.of<ApplicationError, APIGatewayEvent>(event)
-    .chain(pathParamsNotNull)
-    .chain(queryParamsNotNull);
+    .chain(pathParamsIsNull)
+    .chain(queryParamsIsNull);
