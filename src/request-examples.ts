@@ -20,6 +20,6 @@ export const exampleBadRequest = {
   body: null,
   queryStringParameters: null,
   pathParameters: null,
-  httpMethod: 'GET',
+  httpMethod: 'POST',
   path: '/userpost'
 } as APIGatewayEvent;
