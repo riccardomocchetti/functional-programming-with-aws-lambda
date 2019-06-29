@@ -22,4 +22,4 @@ export const exampleBadRequest = {
   pathParameters: null,
   httpMethod: 'GET',
   path: '/userpost'
-} as unknown as APIGatewayEvent;
+} as APIGatewayEvent;

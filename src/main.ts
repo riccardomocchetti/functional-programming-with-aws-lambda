@@ -3,7 +3,7 @@ import { exampleCreateEvent, exampleListEvent, exampleBadRequest } from './reque
 import { DB, createPostIO, listPostsIO } from './dao';
 import { validateCreatePostEvent, validateListPostsEvent } from './validation';
 import { HttpResponse, StatusCodes, ApplicationError } from './http';
-import { taskEither } from 'fp-ts/lib/TaskEither'
+import { taskEither } from 'fp-ts/lib/TaskEither';
 
 const db = DB.inMemory();
 
@@ -26,10 +26,10 @@ const listPosts = (event: APIGatewayEvent, database: DB = db) =>
     );
 
 console.log('> Creating a post...');
-createPost(exampleCreateEvent).map(console.log).run()
+createPost(exampleCreateEvent).map(console.log).run();
 
 console.log('> Retrieving the list of posts...');
-listPosts(exampleListEvent).map(console.log).run()
+listPosts(exampleListEvent).map(console.log).run();
 
 console.log('> Trying to send an invalid request...');
-createPost(exampleBadRequest).map(console.log).run()
+createPost(exampleBadRequest).map(console.log).run();

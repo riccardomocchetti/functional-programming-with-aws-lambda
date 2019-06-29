@@ -4,6 +4,7 @@
   "description": "Functinal programming with AWS Lambda example",
   "main": "main.js",
   "scripts": {
+    "lint": "tslint -p tsconfig.json -c tslint.json",
     "build": "tsc",
     "test": "jest",
     "prestart": "npm run build",
@@ -19,6 +20,6 @@
   "dependencies": {
     "@types/aws-lambda": "^8.10.27",
     "aws-lambda": "^0.1.2",
-    "fp-ts": "^1.18.2"
+    "fp-ts": "^1.19.3"
   }
 }
