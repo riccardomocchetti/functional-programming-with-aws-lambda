@@ -3,24 +3,7 @@ import { curry } from "fp-ts/lib/function";
 import { ApplicationError, StatusCodes } from "./http";
 import { tryCatch } from "fp-ts/lib/TaskEither";
 import { APIGatewayEvent } from "aws-lambda";
-
-export class DB {
-
-  public static inMemory = () => new DB();
-
-  private posts: UserPost[];
-
-  private constructor() {
-    this.posts = [];
-  }
-
-  public createPost = (post: UserPost) => {
-    this.posts.push(post);
-    return Promise.resolve(post);
-  }
-
-  public listPosts = () => Promise.resolve(this.posts);
-}
+import { DB } from "./store";
 
 export const createPostIO = curry((database: DB, event: UserPostEvent) =>
   tryCatch<ApplicationError, UserPost>(

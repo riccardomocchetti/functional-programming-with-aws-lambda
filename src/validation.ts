@@ -1,11 +1,15 @@
 import { APIGatewayEvent } from "aws-lambda";
 import { ApplicationError, StatusCodes } from './http';
 import { UserPostEvent } from './model';
-import { taskEither, left2v, right2v } from "fp-ts/lib/TaskEither";
+import {
+  taskEither as either,
+  left2v as left,
+  right2v as right
+} from "fp-ts/lib/TaskEither";
 
-const parseCreateEventBody = (event: APIGatewayEvent) => {
+const bodyNotNull = (event: APIGatewayEvent) => {
   if (event.body === null) {
-    return left2v<ApplicationError, UserPostEvent>(
+    return left<ApplicationError, APIGatewayEvent>(
       new ApplicationError(
         'Error parsing request body',
         ['Body cannot be empty'],
@@ -13,16 +17,20 @@ const parseCreateEventBody = (event: APIGatewayEvent) => {
       )
     );
   }
+  return right<ApplicationError, APIGatewayEvent>(event);
+};
+
+const parseCreateEventBody = (event: APIGatewayEvent) => {
   try {
-    const parsedBody = event.body !== null
+    const parsedBody = event.body
       ? JSON.parse(event.body)
-      : null;
-    return right2v<ApplicationError, UserPostEvent>({
+      : {};
+    return right<ApplicationError, UserPostEvent>({
       ...event,
       body: parsedBody
     });
   } catch (error) {
-    return left2v<ApplicationError, UserPostEvent>(
+    return left<ApplicationError, UserPostEvent>(
       new ApplicationError(
         'Error parsing request body',
         ['Invalid JSON'],
@@ -32,9 +40,9 @@ const parseCreateEventBody = (event: APIGatewayEvent) => {
   }
 };
 
-const validateQueryParams = (event: APIGatewayEvent) => {
+const queryParamsNotNull = (event: APIGatewayEvent) => {
   if (event.queryStringParameters !== null) {
-    return left2v<ApplicationError, APIGatewayEvent>(
+    return left<ApplicationError, APIGatewayEvent>(
       new ApplicationError(
         'Error parsing request query params',
         ['Query params should be empty'],
@@ -42,12 +50,12 @@ const validateQueryParams = (event: APIGatewayEvent) => {
       )
     );
   }
-  return right2v<ApplicationError, APIGatewayEvent>(event);
+  return right<ApplicationError, APIGatewayEvent>(event);
 };
 
-const validatePathParams = (event: APIGatewayEvent) => {
+const pathParamsNotNull = (event: APIGatewayEvent) => {
   if (event.pathParameters !== null) {
-    return left2v<ApplicationError, APIGatewayEvent>(
+    return left<ApplicationError, APIGatewayEvent>(
       new ApplicationError(
         'Error parsing request path params',
         ['Path params should be empty'],
@@ -55,16 +63,16 @@ const validatePathParams = (event: APIGatewayEvent) => {
       )
     );
   }
-  return right2v<ApplicationError, APIGatewayEvent>(event);
+  return right<ApplicationError, APIGatewayEvent>(event);
 };
 
 export const validateCreatePostEvent = (event: APIGatewayEvent) =>
-  taskEither.of<ApplicationError, APIGatewayEvent>(event)
-    .chain(validatePathParams)
-    .chain(validateQueryParams)
+  either.of<ApplicationError, APIGatewayEvent>(event)
+    .chain(validateListPostsEvent)
+    .chain(bodyNotNull)
     .chain(parseCreateEventBody);
 
 export const validateListPostsEvent = (event: APIGatewayEvent) =>
-  taskEither.of<ApplicationError, APIGatewayEvent>(event)
-    .chain(validatePathParams)
-    .chain(validateQueryParams);
+  either.of<ApplicationError, APIGatewayEvent>(event)
+    .chain(pathParamsNotNull)
+    .chain(queryParamsNotNull);

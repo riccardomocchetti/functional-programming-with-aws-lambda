@@ -1,7 +1,4 @@
-
-export interface HttpHeaders {
-  [key: string]: string;
-}
+import { curry } from "fp-ts/lib/function";
 
 const DEFAULT_HEADERS = {
   'Content-Type': 'application/json'
@@ -26,31 +23,17 @@ export class ApplicationError {
   }
 }
 
-export class HttpResponse<T> {
+export const successResponse = curry(<T>(statusCode: StatusCodes, result: T) =>
+  ({
+    statusCode,
+    headers: DEFAULT_HEADERS,
+    body: JSON.stringify(result)
+  })
+);
 
-  public static fromResult<T>(statusCode: StatusCodes, result: T, headers: HttpHeaders = DEFAULT_HEADERS) {
-    return new HttpResponse<T>(
-      statusCode,
-      headers,
-      JSON.stringify(result)
-    );
-  }
-
-  public static fromError(statusCode: StatusCodes, error: ApplicationError, headers: HttpHeaders = DEFAULT_HEADERS) {
-    return new HttpResponse(
-      statusCode,
-      headers,
-      JSON.stringify({ message: error.message, errors: error.errors })
-    );
-  }
-
-  public readonly statusCode: StatusCodes;
-  public readonly headers: HttpHeaders;
-  public readonly body: string;
-
-  private constructor(statusCode: StatusCodes, headers: HttpHeaders, body: string) {
-    this.statusCode = statusCode;
-    this.headers = headers;
-    this.body = body;
-  }
-}
+export const errorResponse = (error: ApplicationError) =>
+  ({
+    statusCode: error.statusCode,
+    headers: DEFAULT_HEADERS,
+    body: JSON.stringify({ message: error.message, errors: error.errors })
+  });
