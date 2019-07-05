@@ -5,21 +5,25 @@
   "main": "main.js",
   "scripts": {
     "lint": "tslint -p tsconfig.json -c tslint.json",
-    "build": "tsc",
-    "test": "jest",
-    "prestart": "npm run build",
-    "start": "node dist/main.js"
+    "clean": "rimraf dist",
+    "prebuild": "npm run lint && npm run clean",
+    "build": "webpack",
+    "start": "sam local start-api"
   },
   "author": "Riccardo Mocchetti",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^12.0.7",
-    "tslint": "^5.17.0",
-    "typescript": "^3.5.1"
+    "@types/node": "12.0.12",
+    "rimraf": "2.6.3",
+    "ts-loader": "6.0.4",
+    "tslint": "5.18.0",
+    "typescript": "3.5.2",
+    "webpack": "4.35.2",
+    "webpack-cli": "3.3.5"
   },
   "dependencies": {
-    "@types/aws-lambda": "^8.10.27",
-    "aws-lambda": "^0.1.2",
-    "fp-ts": "^1.19.3"
+    "@types/aws-lambda": "8.10.27",
+    "aws-lambda": "0.1.2",
+    "fp-ts": "1.19.4"
   }
 }

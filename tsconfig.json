@@ -1,10 +1,17 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "esnext",
     "module": "commonjs",
-    "strict": true,
-    "esModuleInterop": true,
     "outDir": "dist",
-    "sourceMap": true
+    "strict": true,
+    "baseUrl": "./",
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "types": [
+      "node"
+    ],
+    "esModuleInterop": true,
+    "inlineSourceMap": true
   }
 }

@@ -1,4 +1,11 @@
 Transform: 'AWS::Serverless-2016-10-31'
+
+Globals:
+  Function:
+    Runtime: nodejs8.10
+    Timeout: 10
+    Tracing: Active
+
 Resources:
 
   ListPostsFunction:
@@ -6,12 +13,9 @@ Resources:
     Type: 'AWS::Serverless::Function'
     
     Properties:
-      
-      # This function uses the Nodejs v6.10 runtime.
-      Runtime: nodejs6.10
-        
+              
       # This is the Lambda function's handler.
-      Handler: service.listPosts
+      Handler: main.listPostsHandler
       
       # The location of the Lambda function code.
       CodeUri: ./dist

@@ -1,4 +1,4 @@
-import { exampleCreateEvent, exampleListEvent, exampleBadRequest } from './request-examples';
+import { exampleCreateEvent, exampleListEvent, exampleBadRequest } from './test-examples';
 import { DB } from './store';
 import { createPost, listPosts } from './service';
 import { task } from 'fp-ts/lib/Task';
