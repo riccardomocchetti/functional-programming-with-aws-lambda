@@ -8,6 +8,7 @@
     "clean": "rimraf dist",
     "prebuild": "npm run lint && npm run clean",
     "build": "webpack",
+    "prestart": "npm run build",
     "start": "sam local start-api"
   },
   "author": "Riccardo Mocchetti",

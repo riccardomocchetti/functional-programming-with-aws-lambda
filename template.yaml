@@ -9,25 +9,29 @@ Globals:
 Resources:
 
   ListPostsFunction:
-    # This resource creates a Lambda function.
     Type: 'AWS::Serverless::Function'
     
     Properties:
-              
-      # This is the Lambda function's handler.
+      CodeUri: ./dist
       Handler: main.listPostsHandler
       
-      # The location of the Lambda function code.
-      CodeUri: ./dist
-      
-      # Event sources to attach to this function. In this case, we are attaching
-      # one API Gateway endpoint to the Lambda function. The function is
-      # called when a HTTP request is made to the API Gateway endpoint.
       Events:
-
-        ThumbnailApi:
-            # Define an API Gateway endpoint that responds to HTTP GET at /thumbnail
+        ListPostsApi:
             Type: Api
             Properties:
                 Path: /posts
                 Method: GET
+  
+  ListPostsFunction:
+    Type: 'AWS::Serverless::Function'
+    
+    Properties:
+      CodeUri: ./dist
+      Handler: main.createPostHandler
+      
+      Events:
+        ListPostsApi:
+            Type: Api
+            Properties:
+                Path: /posts
+                Method: POST
