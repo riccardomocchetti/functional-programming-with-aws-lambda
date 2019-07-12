@@ -13,7 +13,7 @@ And many others [[1]](https://alvinalexander.com/scala/fp-book/benefits-of-funct
 
 This sounds great, everyting is easier, but it does not come for free.
 
-What I would like to show to the reader in the next sections is that to actually benefit from functional programming, we need to change how we think and write code.
+What I would like to show in the next sections is that to actually benefit from functional programming, we need to change how we think and write code.
 I would like to describe what my thought process is like when I write a program, and that by applying a few principles we can actually see the benefits of functional programming.
 
 
@@ -35,8 +35,8 @@ Enough with the chit-chat, let's focus on a _real_ application and let's see wha
 
 This application is a really simple one, the backend for a blog. It offers a REST API that allows two operations:
 
-- __POST__ _/posts_ to create a blog post;
-- __GET__ _/posts_ to retrieve the full list of posts.
+- `POST /posts` to create a blog post;
+- `GET /posts` to retrieve the full list of posts.
 
 This [repository]() contains all the code snippets I show in the next sections and can be run as a standalone application.
 
@@ -62,10 +62,90 @@ A request comes in. It goes through a validator. If the validation passes then t
 This looks very simple at a first glance but it can become quite complex depending on the type of validation. The risk is that our validator function becomes big, difficult to maintain and not reusable.
 
 The answer I found to this problem is __function composition__.
+ 
+## Function Composition in Practice
 
 > Function composition is the process of applying a function to the output of another function [[2]](https://medium.com/@gigobyte/implementing-the-function-composition-operator-in-javascript-e2c4f1847d6a)
 
+The definition suggests we can break down the function validating the whole payload into smaller functions, each validating a part of the payload, that we can then compose together and validate the whole payload. 
 
+The advantage of following this approach is that we can think about our smaller functions in a way that is reusable. We can then build our request validation from small building blocks, like we would do when playing with LEGO blocks.
+
+Let's say we want to implement validation for the `POST /posts` request, and that the request is valid if:
+- There is no path parameters;
+- There is no query parameters;
+- We can parse the request body without errors.
+
+Other rules to test the validity of the request body can be easily implemented with additional functions. For now we are going to focus on the principle of Function Composition.
+
+We could implement the validation rules with the three functions below.
+
+```typescript
+const queryParamsIsNull = (event: APIGatewayEvent) => {
+  if (event.queryStringParameters !== null) {
+    throw new ApplicationError(
+      'Error parsing request query params',
+      ['Query params should be empty'],
+      StatusCodes.BAD_REQUEST
+    );
+  }
+  return event;
+};
+
+const pathParamsIsNull = (event: APIGatewayEvent) => {
+  if (event.pathParameters !== null) {
+    throw new ApplicationError(
+      'Error parsing request path params',
+      ['Path params should be empty'],
+      StatusCodes.BAD_REQUEST
+    );
+  }
+  return event;
+};
+
+const asUserPostEvent = (event: APIGatewayEvent) => {
+  try {
+    const parsedBody = event.body
+      ? JSON.parse(event.body)
+      : {};
+    return {
+      ...event,
+      body: parsedBody
+    };
+  } catch (error) {
+    throw new ApplicationError(
+      'Error parsing request body',
+      ['Invalid JSON'],
+      StatusCodes.BAD_REQUEST
+    );
+  }
+};
+```
+
+The three functions we just wrote have a few properties that is worth noting.
+
+They are generic enough to be applied to every request that is coiming into our application. They take the whole event as a parameter and they focus on the event attribute they are validating.
+
+They can be combined together like a chain. 
+
+`queryParamsIsNull` and `pathParamsIsNull` take the same input and return the `event` if the validation is successful and they can be called in any order. The last ring of our chain is going to be `asUserPostEvent` which parses the body in our request and returns the parsed body along with all other request parameters.
+
+The validation function for the `POST /posts` request we can now be written as:
+
+```typescript
+const validateCreatePostEvent = compose(asUserPostEvent, queryParamsIsNull, pathParamsIsNull);
+```
+
+Where `compose` is a utility function present in most Functional Programming frameworks that helps us specifying function composition more elegantly.
+
+We can write the function composition without the `compose` helper in a less readable fashion.
+
+```typescript
+const validateCreatePostEvent = (event: APIGatewayEvent) => 
+  asUserPostEvent(queryParamsIsNull(pathParamsIsNull(event)))
+```
+
+If we look closely at our second definition of `validateCreatePostEvent` we notice that the functions we pass to the `compose` helper are applied from right to left.
 
 ## FP patterns
 ### Composition
@@ -76,4 +156,4 @@ The answer I found to this problem is __function composition__.
 
 ## Database interaction
 
-## Composing the service
+## Composing the service 
