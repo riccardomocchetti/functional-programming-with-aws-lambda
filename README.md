@@ -63,7 +63,7 @@ This looks very simple at a first glance but it can become quite complex dependi
 
 The answer I found to this problem is __function composition__.
  
-## Function Composition in Practice
+## Function Composition
 
 > Function composition is the process of applying a function to the output of another function [[2]](https://medium.com/@gigobyte/implementing-the-function-composition-operator-in-javascript-e2c4f1847d6a)
 
@@ -163,9 +163,53 @@ So how do we avoid this? How can we write our program so that we don't create si
 
 The answer to all of this is __Railway Oriented Programming__[[4]](https://fsharpforfunandprofit.com/rop/).
 
+## Either this or that
+
+Before diving into the definition of Railway Oriented Programming and see it in action we need to understand how we can stop our validation functions from producing side effects.
+
+Let's have a look at the following example.
+
+```typescript
+const bodyNotNull = (event: APIGatewayEvent) => {
+  if (event.body === null) {
+    return new ApplicationError(
+      'Error parsing request body',
+      ['Body cannot be empty'],
+      StatusCodes.BAD_REQUEST
+    );
+  }
+  return event;
+};
+```
+
+The `bodyNotNull` validation function returns an `ApplicationError` instead of throwing it like an exception. This function does not have side effects anymore, it always returns something, and the output depends only on the input. Unfortunately it is not the best function to deal with, since it does not have a consistent interface.
+
+What we need is to return something that can behave either as an `APIGatewayEvent` or as an `ApplicationError`. Read this 10 times.
+
+In Functional Programming such a thing exists, and it takes the name of, unsurprisingly, __Either__. `Either` can assume a `Left` value or a `Right` value. Conventionally the `Left` value represents an error state, the `Right` value represent a successful computation.
+
+We can now rewrite the validation function to use the `Either`.
+
+```typescript
+const bodyNotNull = (event: APIGatewayEvent) => {
+  if (event.body === null) {
+
+    // We failed the validation, so we return a Left value
+    return left<ApplicationError, APIGatewayEvent>(
+      new ApplicationError(
+        'Error parsing request body',
+        ['Body cannot be empty'],
+        StatusCodes.BAD_REQUEST
+      )
+    );
+  }
+
+  // Our validation passed, so we return a Right value
+  return right<ApplicationError, APIGatewayEvent>(event);
+};
+```
+
 ## Railway Oriented Programming
-
-
 
 ## IO
 ## Composing the service 
