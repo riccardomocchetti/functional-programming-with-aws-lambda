@@ -38,7 +38,7 @@ This application is a really simple one, the backend for a blog. It offers a RES
 - `POST /posts` to create a blog post;
 - `GET /posts` to retrieve the full list of posts.
 
-This [repository]() contains all the code snippets I show in the next sections and can be run as a standalone application.
+This [repository]() contains the application I use to showcase some of the principles in the next sections.
 
 ## Request Validation
 One of the first things I think about when writing a REST application is how I want to validate requests coming from the user.
@@ -147,13 +147,25 @@ const validateCreatePostEvent = (event: APIGatewayEvent) =>
 
 If we look closely at our second definition of `validateCreatePostEvent` we notice that the functions we pass to the `compose` helper are applied from right to left.
 
-## FP patterns
-### Composition
-### Railway oriented programming
-### IO
+## Handling Exceptions
 
-## Request validation
+I need to be completely honest, in the previous section I didn't tell you the whole truth. The examples I showed are served me well to explain Composition, but they all have a major issue. They all have a __side effect__.
 
-## Database interaction
+> A side effect is a change of system state or observable interaction with the outside world that occurs during the calculation of a result. [[3]](https://mostly-adequate.gitbooks.io/mostly-adequate-guide/ch03.html#side-effects-may-include)
 
+In every example we've seen so far, whenever we want to fail, we throw an exception. This means that we lose control of the program flow. The exception needs to be picked up buy something else, and that something else has to deal with it.
+
+The most common example I've found in my experience is when you want to show an error message to the user of a spring boot application. You basically define your exceptions to inherit from a particular class that translates the exception into an HTTP response at runtime.
+
+This introduces the huge problem that the correctness of my program depends on something else. It makes my program harder to test because I can't just rely on my inputs anymore. Furthermore, it makes my program less readable because in order to understand how my program behaves, I can't just look at the function itself but I need to consider the context in wich my function runs.
+
+So how do we avoid this? How can we write our program so that we don't create side effects? How do we return different values depending on the result of the validation? How do we compose our functions so that we have one single flow independently of the result of the validation?
+
+The answer to all of this is __Railway Oriented Programming__[[4]](https://fsharpforfunandprofit.com/rop/).
+
+## Railway Oriented Programming
+
+
+
+## IO
 ## Composing the service 
