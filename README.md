@@ -209,11 +209,24 @@ const bodyNotNull = (event: APIGatewayEvent): Either<ApplicationError, APIGatewa
 };
 ```
 
-If you take a closer look at the return type of the `bodyNotNull` function, you can see that we return an `Either` that can assume both an `ApplicationError` or an `APIGatewayEvent` value.
+If we take a closer look at the return type of the `bodyNotNull` function, we can see that we return an `Either` that can assume both an `ApplicationError` or an `APIGatewayEvent` value. We provide the real value to our `Either` when we pass an instance of `ApplicationError` to the `left` function, or our `event` to the `right` function.
 
-We provide the real value to our `Either` when we pass an instance of `ApplicationError` to the `left` function, or our `event` to the `right` function.
+## Functions as chains
 
-## Composing by Mapping
+We have seen how to use `Either` to write functions with no side effects when it come to error handeling. Unfortunately we changed the return type of our functions to accommodate our new concept.
+
+This means that we can no longer compose our validation functions the way we've seen previusly because our functions take an `APIGatewayEvent` as an input but now we provide `Either<ApplicationError, APIGatewayEvent>`.
+
+We could reimplement each validation function to take `Either` as input parameter, but there is a better way.
+
+```typescript
+const validateCreatePostEvent = (event: APIGatewayEvent) =>
+  either.of<ApplicationError, APIGatewayEvent>(event)
+    .chain(pathParamsIsNull)
+    .chain(queryParamsIsNull)
+    .chain(bodyNotNull)
+    .chain(asUserPostEvent);
+```
 
 ## Railway Oriented Programming
 
