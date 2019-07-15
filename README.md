@@ -188,7 +188,7 @@ In Functional Programming such a thing exists, and it takes the name of, unsurpr
 
 `Either` can assume a `Left` value or a `Right` value. Conventionally the `Left` value represents an error state while  the `Right` value represent a successful computation.
 
-We can now rewrite the validation function to use the `Either`.
+We can now rewrite the validation function to use this new concept.
 
 ```typescript
 const bodyNotNull = (event: APIGatewayEvent): Either<ApplicationError, APIGatewayEvent> => {
@@ -212,6 +212,8 @@ const bodyNotNull = (event: APIGatewayEvent): Either<ApplicationError, APIGatewa
 If you take a closer look at the return type of the `bodyNotNull` function, you can see that we return an `Either` that can assume both an `ApplicationError` or an `APIGatewayEvent` value.
 
 We provide the real value to our `Either` when we pass an instance of `ApplicationError` to the `left` function, or our `event` to the `right` function.
+
+## Composing by Mapping
 
 ## Railway Oriented Programming
 
