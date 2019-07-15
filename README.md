@@ -161,11 +161,9 @@ This introduces the huge problem that the correctness of my program depends on s
 
 So how do we avoid this? How can we write our program so that we don't create side effects? How do we return different values depending on the result of the validation? How do we compose our functions so that we have one single flow independently of the result of the validation?
 
-The answer to all of this is __Railway Oriented Programming__[[4]](https://fsharpforfunandprofit.com/rop/).
-
 ## Either this or that
 
-Before diving into the definition of Railway Oriented Programming and see it in action we need to understand how we can stop our validation functions from producing side effects.
+The first step into our getting rid of side effects journey is to understand how we can stop our validation functions from throwing exceptions. Let me show you how. The answer might be simpler than you expect.
 
 Let's have a look at the following example.
 
@@ -182,20 +180,22 @@ const bodyNotNull = (event: APIGatewayEvent) => {
 };
 ```
 
-The `bodyNotNull` validation function returns an `ApplicationError` instead of throwing it like an exception. This function does not have side effects anymore, it always returns something, and the output depends only on the input. Unfortunately it is not the best function to deal with, since it does not have a consistent interface.
+The `bodyNotNull` function returns an `ApplicationError` instead of throwing it like an exception. This function does not have side effects anymore, it always returns something, and the output depends only on the input. Unfortunately it is not the best function to deal with, since it does not have a consistent interface.
 
 What we need is to return something that can behave either as an `APIGatewayEvent` or as an `ApplicationError`. Read this 10 times.
 
-In Functional Programming such a thing exists, and it takes the name of, unsurprisingly, __Either__. `Either` can assume a `Left` value or a `Right` value. Conventionally the `Left` value represents an error state, the `Right` value represent a successful computation.
+In Functional Programming such a thing exists, and it takes the name of, unsurprisingly, __Either__[[4]](https://mostly-adequate.gitbooks.io/mostly-adequate-guide/ch08.html#pure-error-handling). 
+
+`Either` can assume a `Left` value or a `Right` value. Conventionally the `Left` value represents an error state while  the `Right` value represent a successful computation.
 
 We can now rewrite the validation function to use the `Either`.
 
 ```typescript
-const bodyNotNull = (event: APIGatewayEvent) => {
+const bodyNotNull = (event: APIGatewayEvent): Either<ApplicationError, APIGatewayEvent> => {
   if (event.body === null) {
 
     // We failed the validation, so we return a Left value
-    return left<ApplicationError, APIGatewayEvent>(
+    return left(
       new ApplicationError(
         'Error parsing request body',
         ['Body cannot be empty'],
@@ -205,9 +205,13 @@ const bodyNotNull = (event: APIGatewayEvent) => {
   }
 
   // Our validation passed, so we return a Right value
-  return right<ApplicationError, APIGatewayEvent>(event);
+  return right(event);
 };
 ```
+
+If you take a closer look at the return type of the `bodyNotNull` function, you can see that we return an `Either` that can assume both an `ApplicationError` or an `APIGatewayEvent` value.
+
+We provide the real value to our `Either` when we pass an instance of `ApplicationError` to the `left` function, or our `event` to the `right` function.
 
 ## Railway Oriented Programming
 
