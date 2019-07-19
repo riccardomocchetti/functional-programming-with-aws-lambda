@@ -1,8 +1,8 @@
 # Cloud Native Functional Programming with AWS Lambda
 
 ## Why Functional Programming (FP)
-Whenever you talk to an experienced functional programmer, you watch a keynote or you read about functional programming on other blog posts, 
-people tend to list the following as benefits when you choose to adopt functional programming for your next project. 
+Whenever you talk to an experienced functional programmer, you watch a keynote or you read about FP on other blog posts, 
+people tend to list the following as benefits when you choose to adopt FP for your next project. 
 
 - Functions are easier to reason about;
 - Programs are easier to comprehend because are written at a higher level;
@@ -13,7 +13,7 @@ And many others [[1]](https://alvinalexander.com/scala/fp-book/benefits-of-funct
 
 This sounds great, everyting is easier, but it does not come for free.
 
-What I would like to show in this post is that to actually benefit from functional programming, we need to change how we think and write code.
+What I would like to show in this post is that to actually benefit from FP, we need to change how we think and write code.
 I would like to describe what my thought process is like when I write a program, and that by applying a few principles we can actually see the benefits listed above.
 
 
@@ -22,7 +22,7 @@ AWS Lambda is a fully managed environment where we can run our code (with some l
 
 The model is really simple. The code is deployed in what it's called a lambda function. Whenever a lambda function receives an event (from one of the supported AWS services), it triggers our code passing the event as a parameter.
 
-It sounds perfect! Functional programming is all about defining your program as functions, so AWS Lambda gives us the right abstraction to interact with other AWS services. Everithing is an event that we receive as a parameter.
+It sounds perfect! FP is all about defining your program as functions, so AWS Lambda gives us the right abstraction to interact with other AWS services. Everithing is an event that we receive as a parameter.
 
 One of the most common usage of AWS Lambda is in conjuntion with AWS API Gateway to build a REST application. The API Gateway deals with receiving, parsing and potentially validating a requests. The request is passed to a lambda function as an event, and triggers its execution.
 
@@ -31,7 +31,7 @@ We can already see an advantage of using this model when we develop our REST app
 This can also be extended to other AWS services, for example AWS SQS/SNS where we don't have to implement the logic to retrieve messages from the queue/topic, and so on.
 
 ## A Real Example
-Enough with the chit-chat, let's focus on a _real_ application and let's see what it means to write it in functional programming and run it in AWS Lambda.
+Enough with the chit-chat, let's focus on a _real_ application and let's see what it means to write it in FP and run it in AWS Lambda.
 
 This application is a really simple one, the backend for a blog. It offers a REST API that allows two operations:
 
@@ -124,7 +124,7 @@ const asUserPostEvent = (event: APIGatewayEvent) => {
 
 The three functions we just wrote have a few properties that is worth noting.
 
-They are generic enough to be applied to every request that is coiming into our application. They take the whole event as a parameter and they focus on the event attribute they are validating.
+They are generic enough to be applied to every request that is coming into our application. They take the whole event as a parameter and they focus on the event attribute they are validating.
 
 They can be combined together like a chain. 
 
@@ -136,7 +136,7 @@ The validation function for the `POST /posts` request we can now be written as:
 const validateCreatePostEvent = compose(asUserPostEvent, queryParamsIsNull, pathParamsIsNull);
 ```
 
-Where `compose` is a utility function present in most Functional Programming frameworks that helps us specifying function composition more elegantly.
+Where `compose` is a utility function present in most FP frameworks that helps us specifying function composition more elegantly.
 
 We could write the function composition without the `compose` helper in a less readable fashion.
 
@@ -182,9 +182,7 @@ const bodyNotNull = (event: APIGatewayEvent) => {
 
 The `bodyNotNull` function returns an `ApplicationError` instead of throwing it like an exception. This function does not have side effects anymore, it always returns something, and the output depends only on the input. Unfortunately it is not the best function to deal with, since it does not have a consistent interface.
 
-What we need is to return something that can behave either as an `APIGatewayEvent` or as an `ApplicationError`. Read this 10 times.
-
-In Functional Programming such a thing exists, and it takes the name of, unsurprisingly, __Either__[[4]](https://mostly-adequate.gitbooks.io/mostly-adequate-guide/ch08.html#pure-error-handling). 
+What we need is to return something that can behave either as an `APIGatewayEvent` or as an `ApplicationError`. Read this 10 times. In FP such a thing exists, and it takes the name of, unsurprisingly, __Either__[[4]](https://mostly-adequate.gitbooks.io/mostly-adequate-guide/ch08.html#pure-error-handling). 
 
 `Either` can assume a `Left` value or a `Right` value. Conventionally the `Left` value represents an error state while  the `Right` value represent a successful computation.
 
@@ -257,9 +255,9 @@ export const validateCreatePostEvent = (event: APIGatewayEvent) =>
     .chain(asUserPostEvent);
 ```
 
-With `either.of(event)` we create a new `Either` monad containing the Api Gateway event. We then `chain` toghether each validation function. Remember every validation function returns an `Either`. 
+With `either.of(event)` we create a new `Either` monad containing the Api Gateway event. We then `chain` toghether each validation function. Remember every validation function takes the `event`, which is contained in the `Either`, and returns an `Either`. 
 
-When a new event goes through the chain each function will be applied as long as the previous functon returned a `Right`. If, for any reason, a validation rule fails, it will produce a `Left` value that will be propagated to the end of the chain. 
+When a new event goes through the chain, each function will be applied as long as the previous functon returned a `Right`. If, for any reason, a validation rule fails, it will produce a `Left` value that will be propagated to the end of the chain. 
 
 ## IO
 ## Composing a Service 
