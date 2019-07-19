@@ -1,8 +1,7 @@
 # Cloud Native Functional Programming with AWS Lambda
 
 ## Why Functional Programming (FP)
-Whenever you talk to an experienced functional programmer, you watch a keynote or you read about FP on other blog posts, 
-people tend to list the following as benefits when you choose to adopt FP for your next project. 
+Whenever you talk to an experienced functional programmer, you watch a keynote or you read about FP on other blog posts, people tend to list the benefits of adopting FP as follows. 
 
 - Functions are easier to reason about;
 - Programs are easier to comprehend because are written at a higher level;
@@ -20,9 +19,9 @@ I would like to describe what my thought process is like when I write a program,
 ## Why AWS Lambda
 AWS Lambda is a fully managed environment where we can run our code (with some limits). 
 
-The model is really simple. The code is deployed in what it's called a lambda function. Whenever a lambda function receives an event (from one of the supported AWS services), it triggers our code passing the event as a parameter.
+The model is really simple. Our code is deployed in what it's called a lambda function. Whenever a lambda function receives an event from one of the supported AWS services, it triggers our code passing the event as a parameter.
 
-It sounds perfect! FP is all about defining your program as functions, so AWS Lambda gives us the right abstraction to interact with other AWS services. Everithing is an event that we receive as a parameter.
+It sounds perfect! FP is all about defining our program as functions, so AWS Lambda gives us the right abstraction to interact with other AWS services. Everithing is an event that we receive as a parameter.
 
 One of the most common usage of AWS Lambda is in conjuntion with AWS API Gateway to build a REST application. The API Gateway deals with receiving, parsing and potentially validating a requests. The request is passed to a lambda function as an event, and triggers its execution.
 
@@ -35,8 +34,8 @@ Enough with the chit-chat, let's focus on a _real_ application and let's see wha
 
 This application is a really simple one, the backend for a blog. It offers a REST API that allows two operations:
 
-- `POST /posts` to create a blog post;
-- `GET /posts` to retrieve the full list of posts.
+- `POST /blogposts` to create a blog post;
+- `GET /blogposts` to retrieve the full list of posts.
 
 This [repository]() contains the application I use to showcase some of the principles in the next sections.
 
@@ -51,7 +50,7 @@ AWS Lambda helps us here because an HTTP request is just an event. In particular
   queryStringParameters: { "param": "queryParam" },
   pathParameters: { "param": "pathParam" },
   httpMethod: 'POST',
-  path: '/post'
+  path: '/blogposts'
 }
 ```
 
@@ -71,7 +70,7 @@ The definition suggests we can break down the function that validates the whole 
 
 The advantage of following this approach is that we can think about our smaller functions in a way that is reusable. We can then build our request validation from small building blocks, like we would do when playing with LEGO blocks.
 
-Let's say we want to implement validation for the `POST /posts` request, and that the request is valid if:
+Let's say we want to implement validation for the `POST /blogposts` request, and that the request is valid if:
 - There is no path parameters;
 - There is no query parameters;
 - We can parse the request body without errors.
@@ -122,50 +121,49 @@ const asUserPostEvent = (event: APIGatewayEvent) => {
 };
 ```
 
-The three functions we just wrote have a few properties that is worth noting.
+The three functions we just wrote have a few properties that is worth noting. They:
+- are generic enough to be applied to every request that is coming into our application;
+- take the whole event as a parameter and they focus on the event attribute they are validating;
+- can be combined together like a chain. 
 
-They are generic enough to be applied to every request that is coming into our application. They take the whole event as a parameter and they focus on the event attribute they are validating.
+`queryParamsIsNull` and `pathParamsIsNull` take the `event` as input and return the `event` if the validation is successful. Furthermore they can be called in any order. 
 
-They can be combined together like a chain. 
+The last ring of our chain is going to be `asUserPostEvent`. It parses the `body` of our request and returns the parsed body along with all other request parameters.
 
-`queryParamsIsNull` and `pathParamsIsNull` take the same input and return the `event` if the validation is successful and they can be called in any order. The last ring of our chain is going to be `asUserPostEvent` which parses the body in our request and returns the parsed body along with all other request parameters.
-
-The validation function for the `POST /posts` request we can now be written as:
+The validation function for the `POST /blogposts` request can be written as composition of our three functions.
 
 ```typescript
 const validateCreatePostEvent = compose(asUserPostEvent, queryParamsIsNull, pathParamsIsNull);
 ```
 
-Where `compose` is a utility function present in most FP frameworks that helps us specifying function composition more elegantly.
+`compose` is a utility function present in most FP frameworks that helps us specifying function composition more elegantly.
 
-We could write the function composition without the `compose` helper in a less readable fashion.
+We could also write our validation function without the `compose` helper in a less readable, but more explicit fashion.
 
 ```typescript
 const validateCreatePostEvent = (event: APIGatewayEvent) => 
   asUserPostEvent(queryParamsIsNull(pathParamsIsNull(event)))
 ```
 
-If we look closely at our second definition of `validateCreatePostEvent` we notice that the functions we pass to the `compose` helper are applied from right to left.
+The two definitions are equivalent. If we look closely at our second definition of `validateCreatePostEvent` we notice that the functions we pass to the `compose` helper are applied from right to left.
 
 ## Handling Exceptions
 
-I need to be completely honest, in the previous section I didn't tell you the whole truth. The examples I showed you are really useful to explain Composition, but they all have a major issue. They all produce a __side effect__.
+I need to be completely honest, in the previous section I didn't tell you the whole truth. The examples I used are really useful to explain composition, but they all have a major issue. They all produce a __side effect__.
 
 > A side effect is a change of system state or observable interaction with the outside world that occurs during the calculation of a result. [[3]](https://mostly-adequate.gitbooks.io/mostly-adequate-guide/ch03.html#side-effects-may-include)
 
 In every example we've seen so far, whenever we want to fail, we throw an exception. This means that we lose control of the program flow. The exception needs to be picked up buy something else, and that something else has to deal with it.
 
-The most common example I've found in my experience is when you want to show an error message to the user of a spring boot application. You basically define your exceptions to inherit from a particular class that translates the exception into an HTTP response at runtime.
+The most common example I've found in my experience, is when I want to show an error message to the user of an application written in one of the many web frameworks available. The usual approach is to define exceptions to inherit from a particular class that translates the exception into an HTTP response at runtime.
 
-This introduces the problem that the correctness of my program depends on something else. It makes my program harder to test because I can't just rely on my inputs anymore. Furthermore, it makes my program less readable because in order to understand how my program behaves, I can't just look at the function itself but I need to consider the context in wich my function runs.
+This introduces the problem that the correctness of the program depends on something else. It makes the program harder to test because I can't just rely on my inputs anymore. Furthermore, it makes the program less readable because in order to understand how the program behaves, I can't just look at the function itself but I need to consider the context in wich the function runs.
 
 So how do we avoid this? How can we write our program so that we don't create side effects? How do we return different values depending on the result of the validation? How do we compose our functions so that we have one single flow independently of the result of the validation?
 
 ## Either Left or Right
 
-The first step into our getting rid of side effects journey is to understand how we can rewrite our functions so that they don't throw exceptions. Let me show you how. The answer might be simpler than you expect.
-
-Let's have a look at the following example.
+The first step we need to make to eliminate side effects is to rewrite our functions so that they don't throw exceptions. Let's have a look at the following example.
 
 ```typescript
 const bodyNotNull = (event: APIGatewayEvent) => {
@@ -184,7 +182,7 @@ The `bodyNotNull` function returns an `ApplicationError` instead of throwing it 
 
 What we need is to return something that can behave either as an `APIGatewayEvent` or as an `ApplicationError`. Read this 10 times. In FP such a thing exists, and it takes the name of, unsurprisingly, __Either__[[4]](https://mostly-adequate.gitbooks.io/mostly-adequate-guide/ch08.html#pure-error-handling). 
 
-`Either` can assume a `Left` value or a `Right` value. Conventionally the `Left` value represents an error state while  the `Right` value represent a successful computation.
+`Either` assumes a `Left` value or a `Right` value. Conventionally the `Left` value represents an error state while the `Right` value represent a successful computation.
 
 We can now rewrite the validation function to use this new concept.
 
@@ -221,26 +219,26 @@ We need a new way to compose our functions together.
 
 ## Functions as Chains
 
-If you ask a mathematician "I need to chain a series of functions together, but I also need to capture their errors" you would probably receive this answer: "Oh that's easy, just use a monad!". 
+If you ask a mathematician "I need to chain a series of functions together, but I also need to capture their errors" you would probably receive this answer: "Oh that's easy, just use a monad!". Our mathematician is correct, unfortunately when I heard this answer for the first time it didn't really make sense to me. 
 
-The answer is correct, unfortunately when I heard it for the first time it didn't really make sense to me. I'm going to summarise in a few words the way I think about monads hoping that it might help who, like me, comes to FP from imperative programming. This is an extreme semplification of the definition of a monad and I think FP purists will turn their noses up, but I think it's good enough if you want to start using monads in your application.
+I'm going to summarise in a few words the way I think about monads hoping that it might help who, like me, comes from an imperative programming style. This is an extreme semplification of the definition of a monad and I think FP purists will turn their noses up, but I think it's good enough if you want to start using monads in your application.
 
 I see a monad as a container of one item. This container has three parts:
 1. a type that describes the behavior of the container;
-2. a constructor to be able build a container with an item in it;
-3. one or more operations that allow you to combine (compose) monads. Each combinator allows you to generate a new monad from the item in it.
+2. a constructor to build a container with an item in it;
+3. one or more operations to combine (compose) monads with each other. Each combinator generates a new monad from the item contained in it.
 
 Each part also needs to respect a few mathematical laws. I won't go into more details. If you feel adventurous you can read all about monads in this [paper](http://bit.ly/monad-paper).
 
-The constructor is generally called `of`. `A.of(val)` will build a monad of type `A` containing the value `val`. The most common combinators exposed by a monad are `map` and `chain`.
+The constructor is generally called `of`. When we do `A.of(val)` we create a monad of type `A` that contains the value `val`. The combinators I find myself using more often are `map` and `chain`.
 
 `map` takes a function as a parameter and returns a new monad containing the output of the function.
 
 `chain`, also known as `flatMap`, is similar to `map` but expects the input function to return the new monad.
 
-Good. So now what? How do we use this?
+Good. So, now what? Why is this useful?
 
-You will be glad to know that `Either` is a monad. And it is a monad that behaves in a particular way.
+You will be glad to know that `Either` is a monad. And it behaves in a particular way.
 
 > Each combinator (`map`, `chain`) of the `Either` monad is applied only if the `Either` contains a `Right` value. If the `Either` contains a `Left` value, it is returned untouched.
 
