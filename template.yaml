@@ -22,7 +22,7 @@ Resources:
                 Path: /posts
                 Method: GET
   
-  ListPostsFunction:
+  CreatePostFunction:
     Type: 'AWS::Serverless::Function'
     
     Properties:

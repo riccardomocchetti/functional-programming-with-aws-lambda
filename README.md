@@ -1,4 +1,10 @@
 # Cloud Native Functional Programming with AWS Lambda
+In this post I would like to share architecture and programming pattern I've been using to build Cloud Native application. The usecase I'm going to present is a Serverless REST application deployed in AWS. I want to show how by adopting specific AWS components and programming paradighms we can increase the reliablility of the applications we write, while also increasing their mainteinability.
+
+In particular I'm going to focus on AWS Lambda and Functional Programming (FP).
+
+If you are already familiar with FP and already know concepts like currying, monads, either, task, then feel free to skip a few sections and go to __Composing the Service__.
+If you are only interested in running a working example you can find the code in this [repository](https://github.com/riccardomocchetti/functional-programming-with-aws-lambda).
 
 ## Why Functional Programming (FP)
 Whenever you talk to an experienced functional programmer, you watch a keynote or you read about FP on other blog posts, people tend to list the benefits of adopting FP as follows. 
@@ -14,7 +20,6 @@ This sounds great, everyting is easier, but it does not come for free.
 
 What I would like to show in this post is that to actually benefit from FP, we need to change how we think and write code.
 I would like to describe what my thought process is like when I write a program, and that by applying a few principles we can actually see the benefits listed above.
-
 
 ## Why AWS Lambda
 AWS Lambda is a fully managed environment where we can run our code (with some limits). 
@@ -36,8 +41,6 @@ This application is a really simple one, the backend for a blog. It offers a RES
 
 - `POST /blogposts` to create a blog post;
 - `GET /blogposts` to retrieve the full list of posts.
-
-This [repository]() contains the application I use to showcase some of the principles in the next sections.
 
 ## Request Validation
 One of the first things I think about when writing a REST application is how I want to validate requests coming from the user.
@@ -63,7 +66,6 @@ This looks very simple at a first glance but it can become quite complex dependi
 The answer I found to this problem is __function composition__.
  
 ## Function Composition
-
 > Function composition is the process of applying a function to the output of another function [[2]](https://medium.com/@gigobyte/implementing-the-function-composition-operator-in-javascript-e2c4f1847d6a)
 
 The definition suggests we can break down the function that validates the whole payload into smaller functions, each validating a part of the payload, that we can then compose together. 
@@ -148,7 +150,6 @@ const validateCreatePostEvent = (event: APIGatewayEvent) =>
 The two definitions are equivalent. If we look closely at our second definition of `validateCreatePostEvent` we notice that the functions we pass to the `compose` helper are applied from right to left.
 
 ## Handling Exceptions
-
 I need to be completely honest, in the previous section I didn't tell you the whole truth. The examples I used are really useful to explain composition, but they all have a major issue. They all produce a __side effect__.
 
 > A side effect is a change of system state or observable interaction with the outside world that occurs during the calculation of a result. [[3]](https://mostly-adequate.gitbooks.io/mostly-adequate-guide/ch03.html#side-effects-may-include)
@@ -162,7 +163,6 @@ This introduces the problem that the correctness of the program depends on somet
 So how do we avoid this? How can we write our program so that we don't create side effects? How do we return different values depending on the result of the validation? How do we compose our functions so that we have one single flow independently of the result of the validation?
 
 ## Either Left or Right
-
 The first step we need to make to eliminate side effects is to rewrite our functions so that they don't throw exceptions. Let's have a look at the following example.
 
 ```typescript
@@ -228,7 +228,7 @@ I see a monad as a container of one item. This container has three parts:
 2. a constructor to build a container with an item in it;
 3. one or more operations to combine (compose) monads with each other. Each combinator generates a new monad from the item contained in it.
 
-Each part also needs to respect a few mathematical laws. I won't go into more details. If you feel adventurous you can read all about monads in this [paper](http://bit.ly/monad-paper).
+Each part also needs to respect a few mathematical laws. I won't go into more details. If you feel adventurous you can read all about monads in this paper [[5]](http://bit.ly/monad-paper).
 
 The constructor is generally called `of`. When we do `A.of(val)` we create a monad of type `A` that contains the value `val`. The combinators I find myself using more often are `map` and `chain`.
 
@@ -258,7 +258,6 @@ With `either.of(event)` we create a new `Either` monad containing the Api Gatewa
 When a new event goes through the chain, each function will be applied as long as the previous functon returned a `Right`. If, for any reason, a validation rule fails, it will produce a `Left` value that will be propagated to the end of the chain. 
 
 ## Calling the Database
-
 So far, we have looked at how we can remove side effects from functions that interact only with in memory variables. But when we write a real application we often need to call external services, or a database to store our data.
 
 FP tells us that the execution of our functions must return the same output if we provide the same input. However, when we interact with a database, more often than not, our output depends on the input of the function and on the state of the database. So how do we respect FP rules(?) without giving up on storing and retrieving our precoius data?
@@ -298,7 +297,7 @@ However, our database is going to fail from time to time, so it is better to use
 Our function to store a blog post looks like this:
 
 ```typescript
-export const createPostIO = (database: DB) => (event: UserPostEvent) =>
+const createPostIO = (database: DB) => (event: UserPostEvent) =>
   tryCatch<ApplicationError, UserPost>(
     () => database.createPost(event.body),
     reason => new ApplicationError(
@@ -312,7 +311,7 @@ A few things to note:
 - we pass the `database` as a parameter, this is particularly useful for testing;
 - `tryCatch` is a utility method to create `TaskEither` monads. The first parameter is our `Right` value. The second parameter our `Left` value. We want return the post if we created successfully, otherwise we return an error.
 
-I'm using a tecnique called [currying]() to define `createPostIO`. If I want I can now fix the first parameter and do very nice things like.
+I'm using a tecnique called [currying]() to define `createPostIO`. It allows me to fix the first parameter and do things like.
 
 ```typescript
 const createPostWithDynamoDB = createPostIO(dynamoDB)
@@ -320,7 +319,146 @@ const createPostWithDynamoDB = createPostIO(dynamoDB)
 const createPostWithMock = createPostIO(mockDB)
 ```
 
-and then use the first definition for my production code and the second definition for testing.
+This way I can preserve the behaviour and only change the implementation of my database. Really useful for testing.
 
-## Composing a Service 
-## Running Locally
+## Composing the Service 
+In the previous sections we looked at how to use `Either` to do validation and how to use `TaskEither` to send requests to our database. These two monads allow us to define both successful behaviours and error behaviours of our application without introducing any side effect in our code. 
+
+Our functions look pretty much like this.
+
+```typescript
+const validateCreatePostEvent = (event: APIGatewayEvent) =>
+  either.of<ApplicationError, APIGatewayEvent>(event)
+    .chain(pathParamsIsNull)
+    .chain(queryParamsIsNull)
+    .chain(bodyNotNull)
+    .chain(asUserPostEvent);
+    
+const createPostIO = (database: DB) => (event: UserPostEvent) =>
+  tryCatch<ApplicationError, UserPost>(
+    () => database.createPost(event.body),
+    reason => new ApplicationError(
+      'Error storing item',
+      [reason as string],
+      StatusCodes.SERVER_ERROR)
+  )
+```
+
+If we try to chain these two functions together our compiler is not happy because `Either` and `TaskEither` are two different types. The easiest and more consistent way to fix this is to exploit the fact that we can use `TaskEither` for in memory variables as well, and update the definition of the validation functions.
+
+```typescript
+const validateCreatePostEvent = (event: APIGatewayEvent) =>
+  taskEither.of<ApplicationError, APIGatewayEvent>(event)
+    .chain(pathParamsIsNull)
+    .chain(queryParamsIsNull)
+    .chain(bodyNotNull)
+    .chain(asUserPostEvent);
+```
+
+Every function returns a `TaskEither` now and we can start looking at the bigger picture. The next step now is to take a `POST /blogposts` event, validate it and store the blog post into our database. Being now masters of function composition we can simply write 
+
+```typescript
+const createPost = (event: APIGatewayEvent, database: DB) =>
+  taskEither.of<ApplicationError, APIGatewayEvent>(event)
+    .chain(validateCreatePostEvent)
+    .chain(createPostIO(database))
+```
+
+Our new `createPost` function is now ready to take the event and queue all our validation and database interaction ready for something to execute `run()`. But what happens if we execute it now? What is the user going to see if we succede? And what if we fail?
+
+`TaskEither` offers us another interface where we can specify what happens in case our value is `Right` or `Left`. This interface is the `fold` method.
+
+```typescript
+const createPost = (event: APIGatewayEvent, database: DB) =>
+  taskEither.of<ApplicationError, APIGatewayEvent>(event)
+    .chain(validateCreatePostEvent)
+    .chain(createPostIO(database))
+    .fold(
+      errorResponse,
+      successResponse(StatusCodes.CREATED)
+    );
+```
+
+`fold` will merge our two branches `Left` and `Right` into one outcome. If our computation fails, `fold` will execute the function passed as first parameter, otherwise it will execute the second function.
+
+At this point we have our first service ready. We can deal with all requests to store new posts in a way that is:
+- reliable
+- easy to read
+- easy to test
+- easy to extend
+
+How to deal with `GET /userposts` requests can be defined using the same principles.
+
+## Running the Application Locally
+
+Now that we have our services ready we can see how we can configure AWS Lambda to run our code. We have to
+
+1. Tell AWS Lambda what function to call when an event is received
+2. Deploy our solution locally so we can see it in action
+3. Deploy our solution in AWS
+
+When we define how our code runs in AWS Lambda one of the parameters we are allowed to specify is the `handler`. The handler is the function that AWS Lambda will call whenever an event is received.
+
+```typescript
+// Here we define what database to use when an event is received
+const db = DB.inMemory();
+
+export const createPostHandler = (event: APIGatewayEvent) =>
+  createPost(event, db).run();
+```
+
+Our handler takes the API Gateway event as an input and triggers the execution of the `TaskEither` calling the `run()` function.
+
+There are lot of frameworks to deploy AWS Lambda in conjunction with AWS Api Gateway both locally and in the AWS cloud. The one I'm using for this specific use-case is the __AWS Serverless Application Model (SAM)__[[6]](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html).
+
+SAM allows us to configure your whole application in a file called `template.yaml`
+
+```yaml
+Transform: 'AWS::Serverless-2016-10-31'
+
+Globals:
+  Function:
+    Runtime: nodejs8.10
+    Timeout: 10
+    Tracing: Active
+
+Resources:
+  
+  CreatePostFunction:
+    Type: 'AWS::Serverless::Function'
+    
+    Properties:
+      CodeUri: ./dist
+      Handler: main.createPostHandler
+      
+      Events:
+        ListPostsApi:
+            Type: Api
+            Properties:
+                Path: /posts
+                Method: POST
+```
+
+This configuration tells SAM a few generic things about the application like the runtime environment. It also specifies the interaction beteween API Gateway and AWS Lambda by pairing HTTP methods to different handlers. Each handler is deployed in its own lambda function.
+
+Once we have our configuration ready we can run the application locally by executing
+
+```bash
+sam local start-api
+```
+
+SAM also offers a way to deploy the application. The process is similar to an AWS CLoudFormation deploy. 
+
+The template is first packaged and pushed to ans S3 bucket.
+
+```bash
+$ sam package --template-file sam.yaml --s3-bucket mybucket --output-template-file packaged.yaml
+```
+
+It is then picked up and deployed.
+
+```bash
+$ sam deploy --template-file ./packaged.yaml --stack-name mystack --capabilities CAPABILITY_IAM
+```
+
+I won't go into more details about the application deployment in this post as it is a topic on its own. It is worth noting that SAM comes with built-in __gradual code deployment__[[7]](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/automating-updates-to-serverless-apps.html), a way to reliably deploy your application with techniques like canary deployents and automatic rollbacks.

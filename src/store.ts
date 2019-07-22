@@ -7,7 +7,11 @@ export class DB {
   private posts: UserPost[];
 
   private constructor() {
-    this.posts = [];
+    this.posts = [
+      {user: 'John', title: 'First post', text: 'John\'s first post'},
+      {user: 'John', title: 'Second post', text: 'John\'s second post'},
+      {user: 'John', title: 'Third post', text: 'John\'s third post'}
+    ];
   }
 
   public createPost = (post: UserPost) => {
