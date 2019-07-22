@@ -257,6 +257,70 @@ With `either.of(event)` we create a new `Either` monad containing the Api Gatewa
 
 When a new event goes through the chain, each function will be applied as long as the previous functon returned a `Right`. If, for any reason, a validation rule fails, it will produce a `Left` value that will be propagated to the end of the chain. 
 
-## IO
+## Calling the Database
+
+So far, we have looked at how we can remove side effects from functions that interact only with in memory variables. But when we write a real application we often need to call external services, or a database to store our data.
+
+FP tells us that the execution of our functions must return the same output if we provide the same input. However, when we interact with a database, more often than not, our output depends on the input of the function and on the state of the database. So how do we respect FP rules(?) without giving up on storing and retrieving our precoius data?
+
+The answer FP gives us is really simple, delegation. Let's see how.
+
+```typescript
+const storeById(id: string, data: object) => db.store({...data, id})
+
+const storeByIdDelegated(id: string, data: object) => () => db.store({...data, id})
+```
+
+Instead of calling directly the database like we do in `storeById` we return a function that calls the database, like in `storeByIdDelegated`. Now for every pair of `id, data` we return the function that stores `id, data` in the database, so technically we are returning the same output for the same input. Except this is not really usefull isn't it?
+
+It actually is, let's have a look at the following example.
+
+```typescript
+task.of(2).map(two => two + 4).map(console.log)
+```
+
+We are creating a monad of type `Task`(we don't know yet what it does), with `2` contained in it. We then map `2` to a function that adds `4` to it and then we log the returned value. What we expect see `6` on our screen.
+
+If you run this in the console you'll be surprised, nothing is returned. However if we do
+
+```typescript
+task.of(2).map(two => two + 4).map(console.log).run()
+```
+
+and we call `run()`, we actually see the value `6` showing. This is because `Task` is part of a particular kind of monads called __IO__. 
+
+IO is a generic FP interface that lets interact with external components like we would do normally, but under the hood it composes all our functions together like snow building up on a mountain, ready to be unleashed as soon as we make some noise.
+
+`Task` also offer us a nicer interface for when we need to interact with the database in an asynchronous fashion. Using `Promose`, or `Future` if you are familiar with scala.
+
+However, our database is going to fail from time to time, so it is better to use a `TaskEither` to also capture failure scenarios.
+
+Our function to store a blog post looks like this:
+
+```typescript
+export const createPostIO = (database: DB) => (event: UserPostEvent) =>
+  tryCatch<ApplicationError, UserPost>(
+    () => database.createPost(event.body),
+    reason => new ApplicationError(
+      'Error storing item',
+      [reason as string],
+      StatusCodes.SERVER_ERROR)
+  )
+```
+
+A few things to note:
+- we pass the `database` as a parameter, this is particularly useful for testing;
+- `tryCatch` is a utility method to create `TaskEither` monads. The first parameter is our `Right` value. The second parameter our `Left` value. We want return the post if we created successfully, otherwise we return an error.
+
+I'm using a tecnique called [currying]() to define `createPostIO`. If I want I can now fix the first parameter and do very nice things like.
+
+```typescript
+const createPostWithDynamoDB = createPostIO(dynamoDB)
+
+const createPostWithMock = createPostIO(mockDB)
+```
+
+and then use the first definition for my production code and the second definition for testing.
+
 ## Composing a Service 
 ## Running Locally
