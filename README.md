@@ -1,4 +1,4 @@
-# Cloud Native Functional Programming with AWS Lambda
+# Cloud Native Typed Functional Programming with AWS Lambda
 In this post, I would like to share the architecture and programming pattern I've been using to build Cloud Native applications. The use-case I'm going to present is a Serverless REST application deployed in AWS. I want to show how by adopting specific AWS components and programming paradigms, we can increase the reliability of the applications we write, while also growing their maintainability.
 
 In particular, I'm going to focus on AWS Lambda and Functional Programming (FP).
